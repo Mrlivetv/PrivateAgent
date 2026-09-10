@@ -21,37 +21,20 @@ subprojects {
 }
 
 // ==================================================================
-// JVM target alignment fix
+// Kotlin JVM target alignment
 // ------------------------------------------------------------------
-// Plugins like `shizuku_api` compile against JVM 11 while this app
-// uses JVM 17, which Gradle 8+ rejects with:
+// Plugins like `shizuku_api` ship Kotlin bytecode targeting JVM 11
+// while AGP compiles Java against JVM 17, triggering:
 //   "Inconsistent JVM-target compatibility detected for tasks
 //    'compileDebugJavaWithJavac' (11) and 'compileDebugKotlin' (17)"
 //
-// We hook into plugin application (not afterEvaluate, which would
-// throw "Project.afterEvaluate(Action) when the project is already
-// evaluated" because of the evaluationDependsOn call above).
+// We do NOT touch the Android extension's compileOptions (that fails
+// with "sourceCompatibility has been finalized" on AGP 9). Instead:
+//   1. Force Kotlin's jvmTarget to 17 (matches AGP's Java default).
+//   2. Rely on `kotlin.jvm.target.validation.mode=IGNORE` in
+//      gradle.properties to bypass the check for legacy plugins.
 // ==================================================================
 subprojects {
-    // Fires as soon as the Android plugin is applied — safe here.
-    plugins.withId("com.android.library") {
-        extensions.configure<com.android.build.gradle.LibraryExtension>("android") {
-            compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_17
-            }
-        }
-    }
-    plugins.withId("com.android.application") {
-        extensions.configure<com.android.build.gradle.AppExtension>("android") {
-            compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_17
-            }
-        }
-    }
-
-    // Fires as soon as the Kotlin plugin is applied — safe here too.
     plugins.withId("org.jetbrains.kotlin.android") {
         tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>()
             .configureEach {
