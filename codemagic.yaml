@@ -1,15 +1,15 @@
 # ============================================================
 #  PrivateAgent — Codemagic CI/CD (no signing, no keys)
-#  Builds an unsigned Android APK on every push.
+#  Produces a debug APK you can sideload onto any Android phone.
 #  No keystore, no Google Play, no signing identities needed.
 # ============================================================
 
 workflows:
 
   android-build:
-    name: Android Build (unsigned APK)
+    name: Android Build (debug APK)
     max_build_duration: 60
-    instance_type: linux_x2           # cheapest Linux runner is plenty
+    instance_type: linux_x2           # cheapest Linux runner
     environment:
       flutter: stable
       java: 17                        # Gradle 9.1 / AGP 9 requires JDK 17+
@@ -63,7 +63,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - your-email@example.com    # <- change this
+          - your-email@example.com    # <-- CHANGE THIS to your real email
         notify:
           success: true
           failure: true
