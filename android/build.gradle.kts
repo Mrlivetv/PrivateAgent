@@ -23,29 +23,42 @@ subprojects {
 // ==================================================================
 // JVM target alignment fix
 // ------------------------------------------------------------------
-// Flutter plugins like `shizuku_api` were written for JVM 11, while
-// this app (AGP 9 / Gradle 9.1) compiles against JVM 17. Gradle 8+
-// treats that mismatch as a hard error:
+// Plugins like `shizuku_api` compile against JVM 11 while this app
+// uses JVM 17, which Gradle 8+ rejects with:
 //   "Inconsistent JVM-target compatibility detected for tasks
 //    'compileDebugJavaWithJavac' (11) and 'compileDebugKotlin' (17)"
-// The block below forces every subproject to compile Java AND Kotlin
-// against JVM 17, at task-execution time so it overrides whatever
-// the plugin set.
+//
+// We hook into plugin application (not afterEvaluate, which would
+// throw "Project.afterEvaluate(Action) when the project is already
+// evaluated" because of the evaluationDependsOn call above).
 // ==================================================================
 subprojects {
-    afterEvaluate {
-        // --- Java ---
-        tasks.withType<JavaCompile>().configureEach {
-            sourceCompatibility = JavaVersion.VERSION_17.toString()
-            targetCompatibility = JavaVersion.VERSION_17.toString()
-        }
-
-        // --- Kotlin ---
-        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-            compilerOptions {
-                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    // Fires as soon as the Android plugin is applied — safe here.
+    plugins.withId("com.android.library") {
+        extensions.configure<com.android.build.gradle.LibraryExtension>("android") {
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
             }
         }
+    }
+    plugins.withId("com.android.application") {
+        extensions.configure<com.android.build.gradle.AppExtension>("android") {
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+        }
+    }
+
+    // Fires as soon as the Kotlin plugin is applied — safe here too.
+    plugins.withId("org.jetbrains.kotlin.android") {
+        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>()
+            .configureEach {
+                compilerOptions {
+                    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+                }
+            }
     }
 }
 
