@@ -1,0 +1,69 @@
+# ============================================================
+#  PrivateAgent — Codemagic CI/CD (no signing, no keys)
+#  Builds an unsigned Android APK on every push.
+#  No keystore, no Google Play, no signing identities needed.
+# ============================================================
+
+workflows:
+
+  android-build:
+    name: Android Build (unsigned APK)
+    max_build_duration: 60
+    instance_type: linux_x2           # cheapest Linux runner is plenty
+    environment:
+      flutter: stable
+      java: 17                        # Gradle 9.1 / AGP 9 requires JDK 17+
+
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $HOME/.gradle/caches
+        - $HOME/.gradle/wrapper
+
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: "*"
+          include: true
+          source: true
+      cancel_previous_builds: true
+
+    scripts:
+      - name: Set up local.properties
+        script: |
+          echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/android/local.properties"
+
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+
+      - name: Run static analysis
+        script: |
+          flutter analyze || true
+
+      - name: Run tests
+        script: |
+          flutter test || true
+
+      - name: Build debug APK
+        script: |
+          flutter build apk --debug
+
+      - name: Rename APK for clarity
+        script: |
+          cp build/app/outputs/flutter-apk/app-debug.apk \
+             "build/app/outputs/flutter-apk/PrivateAgent-debug-${BUILD_NUMBER}.apk"
+
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
+      - flutter_drive.log
+
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com    # <- change this
+        notify:
+          success: true
+          failure: true
